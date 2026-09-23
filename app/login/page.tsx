@@ -1,0 +1,2 @@
+import { LoginForm } from "@/components/login-form";
+export default function LoginPage(){return <main className="login-page"><section className="login-card"><div className="brand-mark">WA</div><p className="eyebrow">Internal workspace</p><h1>Welcome back</h1><p>Sign in to review search performance across your websites.</p><LoginForm/><small>Credentials are configured on the server.</small></section></main>}
