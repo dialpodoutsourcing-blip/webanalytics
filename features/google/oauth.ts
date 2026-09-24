@@ -1,31 +1,82 @@
-import { createHash, randomBytes } from "node:crypto";
-import { google } from "googleapis";
+import { google, type Auth } from "googleapis";
 import { getEnv } from "@/lib/env";
-import { prisma } from "@/lib/prisma";
-import { decryptToken, encryptToken } from "./token-crypto";
 import { AppError } from "@/lib/errors";
+import { blobConnectionStore, type ConnectionStore } from "./connection-store";
+import { decryptToken, encryptToken } from "./token-crypto";
 
 const scope = "https://www.googleapis.com/auth/webmasters.readonly";
-function client() { const e = getEnv(); return new google.auth.OAuth2(e.GOOGLE_CLIENT_ID, e.GOOGLE_CLIENT_SECRET, e.GOOGLE_OAUTH_REDIRECT_URI); }
-export async function beginGoogleOAuth() {
-  const state = randomBytes(32).toString("base64url");
-  await prisma.oAuthState.create({ data: { stateHash: createHash("sha256").update(state).digest("hex"), expiresAt: new Date(Date.now() + 600000) } });
-  return client().generateAuthUrl({ access_type: "offline", prompt: "consent", scope: [scope], state });
+
+type OAuthClient = {
+  generateAuthUrl(options: { access_type: "offline"; prompt: "consent"; scope: string[]; state: string }): string;
+  getToken(code: string): Promise<{ tokens: { refresh_token?: string | null; scope?: string | null } }>;
+  setCredentials(credentials: { refresh_token: string }): void;
+};
+
+type OAuthDependencies = {
+  store: ConnectionStore;
+  createClient: () => OAuthClient;
+  encryptionKey: string;
+  encrypt: (value: string, key: string) => string;
+  decrypt: (value: string, key: string) => string;
+  now: () => Date;
+};
+
+export function createGoogleOAuthService(deps: OAuthDependencies) {
+  return {
+    beginGoogleOAuth(state: string) {
+      return deps.createClient().generateAuthUrl({ access_type: "offline", prompt: "consent", scope: [scope], state });
+    },
+    async finishGoogleOAuth(code: string) {
+      const { tokens } = await deps.createClient().getToken(code);
+      if (!tokens.refresh_token) throw new AppError("GOOGLE_REAUTH_REQUIRED", "Google did not return a refresh token.");
+      let existing = null;
+      try { existing = await deps.store.read(); } catch { existing = null; }
+      const timestamp = deps.now().toISOString();
+      await deps.store.write({
+        version: 1,
+        refreshTokenEncrypted: deps.encrypt(tokens.refresh_token, deps.encryptionKey),
+        ...(tokens.scope ? { scope: tokens.scope } : {}),
+        connectedAt: existing?.connectedAt ?? timestamp,
+        updatedAt: timestamp,
+      });
+    },
+    async getAuthorizedGoogleClient() {
+      const connection = await deps.store.read();
+      if (!connection) throw new AppError("GOOGLE_NOT_CONNECTED");
+      try {
+        const oauth = deps.createClient();
+        oauth.setCredentials({ refresh_token: deps.decrypt(connection.refreshTokenEncrypted, deps.encryptionKey) });
+        return oauth;
+      } catch (cause) {
+        throw new AppError("GOOGLE_REAUTH_REQUIRED", undefined, false, { cause });
+      }
+    },
+    async getConnectionStatus() {
+      try {
+        const connection = await deps.store.read();
+        if (!connection) return { connected: false, connectedAt: null, needsAttention: false };
+        deps.decrypt(connection.refreshTokenEncrypted, deps.encryptionKey);
+        return { connected: true, connectedAt: connection.connectedAt, needsAttention: false };
+      } catch {
+        let connectedAt: string | null = null;
+        try { connectedAt = (await deps.store.read())?.connectedAt ?? null; } catch { /* malformed record */ }
+        return { connected: false, connectedAt, needsAttention: true };
+      }
+    },
+  };
 }
-export async function finishGoogleOAuth(code: string, state: string) {
-  const hash = createHash("sha256").update(state).digest("hex");
-  const saved = await prisma.oAuthState.findUnique({ where: { stateHash: hash } });
-  await prisma.oAuthState.deleteMany({ where: { stateHash: hash } });
-  if (!saved || saved.expiresAt < new Date()) throw new AppError("INVALID_INPUT", "Invalid OAuth state");
-  const oauth = client(); const { tokens } = await oauth.getToken(code); const e = getEnv();
-  const existing = await prisma.googleConnection.findFirst();
-  const refresh = tokens.refresh_token ? encryptToken(tokens.refresh_token, e.TOKEN_ENCRYPTION_KEY) : existing?.refreshTokenEncrypted;
-  const data = { accessTokenEncrypted: tokens.access_token ? encryptToken(tokens.access_token, e.TOKEN_ENCRYPTION_KEY) : null, refreshTokenEncrypted: refresh, scope: tokens.scope, tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null };
-  if (existing) await prisma.googleConnection.update({ where: { id: existing.id }, data }); else await prisma.googleConnection.create({ data });
+
+function productionClient() {
+  const env = getEnv();
+  return new google.auth.OAuth2(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET, env.GOOGLE_OAUTH_REDIRECT_URI);
 }
-export async function getAuthorizedGoogleClient() {
-  const connection = await prisma.googleConnection.findFirst();
-  if (!connection?.refreshTokenEncrypted) throw new AppError("GOOGLE_NOT_CONNECTED");
-  const oauth = client(); oauth.setCredentials({ refresh_token: decryptToken(connection.refreshTokenEncrypted, getEnv().TOKEN_ENCRYPTION_KEY) }); return oauth;
+
+function productionService() {
+  const env = getEnv();
+  return createGoogleOAuthService({ store: blobConnectionStore, createClient: productionClient, encryptionKey: env.TOKEN_ENCRYPTION_KEY, encrypt: encryptToken, decrypt: decryptToken, now: () => new Date() });
 }
-export async function getConnectionStatus() { const c = await prisma.googleConnection.findFirst(); return { connected: Boolean(c?.refreshTokenEncrypted), connectedAt: c?.connectedAt ?? null }; }
+
+export function beginGoogleOAuth(state: string) { return productionService().beginGoogleOAuth(state); }
+export function finishGoogleOAuth(code: string) { return productionService().finishGoogleOAuth(code); }
+export async function getAuthorizedGoogleClient(): Promise<Auth.OAuth2Client> { return await productionService().getAuthorizedGoogleClient() as Auth.OAuth2Client; }
+export function getConnectionStatus() { return productionService().getConnectionStatus(); }
