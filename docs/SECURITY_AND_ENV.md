@@ -39,6 +39,9 @@ GOOGLE_CRUX_API_KEY=replace-me
 
 # Token protection
 TOKEN_ENCRYPTION_KEY=replace-with-a-valid-random-key
+
+# Private shared Google connection storage
+BLOB_READ_WRITE_TOKEN=managed-by-vercel-private-blob-store
 ```
 
 The final `.env.example` will use placeholders and contain no working secret. `.env` and local database files will be excluded from version control.
@@ -53,15 +56,22 @@ The final `.env.example` will use placeholders and contain no working secret. `.
 - Session invalidation on logout.
 - No portal credential stored in browser storage.
 
-## 5. OAuth requirements
+## 5. Shared Google OAuth requirements
 
 - Authorization-code flow handled on the server.
-- Random, expiring, one-use OAuth state.
+- One owner Google account authorizes the portal once; every portal session uses that shared Search Console access.
+- While the Google OAuth app is in Testing mode, only the owner account should be configured as a test user.
+- Production JavaScript origin: `https://webanalytics-ten.vercel.app`.
+- Production redirect URI: `https://webanalytics-ten.vercel.app/api/auth/google/callback`.
+- Random, signed, expiring OAuth state stored in an HTTP-only cookie and cleared by the callback.
 - Read-only Search Console scope.
 - Exact redirect URI allowlist.
-- Refresh token encrypted at rest before deployment.
+- Refresh token encrypted before it is written to one private Vercel Blob object.
 - Access/refresh tokens excluded from logs and API responses.
-- Reauthorization path for revoked grants.
+- Settings is the only connect/reconnect path; normal report pages never ask users to connect their own Google account.
+- Reauthorization path for revoked grants or an unreadable shared connection.
+
+The Blob integration supplies `BLOB_READ_WRITE_TOKEN` or OIDC-managed Blob credentials to server code. Do not copy these credentials into tracked files or expose the Blob URL to the browser. `DATABASE_URL` remains available for legacy Prisma models, but the production Google OAuth and Search Console connection path does not read or write SQLite.
 
 ## 6. Input and response safety
 
@@ -77,7 +87,9 @@ The final `.env.example` will use placeholders and contain no working secret. `.
 - Replace both `admin` development credentials.
 - Use HTTPS.
 - Generate new session and token-encryption secrets.
-- Use persistent, access-controlled storage for SQLite.
+- Connect a private Vercel Blob store to Production and Preview.
+- Authorize the owner Google account once and confirm Settings reports the shared connection.
+- Confirm a separate private browser session loads the owner account's Search Console properties without Google consent.
 - Restrict filesystem/database permissions to the application process.
 - Confirm OAuth redirect URIs exactly match the deployed domain.
 - Back up the small database securely.
