@@ -5,7 +5,6 @@ const mocks = vi.hoisted(() => ({
   cookies: vi.fn(),
   cookieGet: vi.fn(),
   cookieSet: vi.fn(),
-  cookieDelete: vi.fn(),
   createState: vi.fn(),
   verifyState: vi.fn(),
   begin: vi.fn(),
@@ -29,7 +28,7 @@ describe("Google OAuth routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.unauthorized.mockResolvedValue(null);
-    mocks.cookies.mockResolvedValue({ get: mocks.cookieGet, set: mocks.cookieSet, delete: mocks.cookieDelete });
+    mocks.cookies.mockResolvedValue({ get: mocks.cookieGet, set: mocks.cookieSet });
     mocks.createState.mockResolvedValue({ state: "opaque", cookieValue: "signed" });
     mocks.begin.mockReturnValue("https://accounts.google.test/consent");
     mocks.verifyState.mockResolvedValue(true);
@@ -59,7 +58,7 @@ describe("Google OAuth routes", () => {
   it("clears and rejects mismatched state before code exchange", async () => {
     mocks.verifyState.mockResolvedValue(false);
     const response = await callback(new Request("https://portal.test/api/auth/google/callback?code=code&state=wrong"));
-    expect(mocks.cookieDelete).toHaveBeenCalledWith("google_oauth_state");
+    expect(mocks.cookieSet).toHaveBeenCalledWith("google_oauth_state", "", expect.objectContaining({ maxAge: 0, path: "/api/auth/google/callback" }));
     expect(mocks.finish).not.toHaveBeenCalled();
     expect(response.headers.get("location")).toBe("https://portal.test/settings?error=google_connection");
   });
@@ -73,7 +72,7 @@ describe("Google OAuth routes", () => {
   it("clears state and redirects safely when Google exchange fails", async () => {
     mocks.finish.mockRejectedValue(new Error("provider details"));
     const response = await callback(new Request("https://portal.test/api/auth/google/callback?code=code&state=opaque"));
-    expect(mocks.cookieDelete).toHaveBeenCalledWith("google_oauth_state");
+    expect(mocks.cookieSet).toHaveBeenCalledWith("google_oauth_state", "", expect.objectContaining({ maxAge: 0, path: "/api/auth/google/callback" }));
     expect(response.headers.get("location")).toBe("https://portal.test/settings?error=google_connection");
   });
 });

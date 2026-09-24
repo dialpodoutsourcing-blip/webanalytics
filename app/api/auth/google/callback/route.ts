@@ -8,7 +8,13 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const cookieStore = await cookies();
   const signedState = cookieStore.get(GOOGLE_OAUTH_STATE_COOKIE)?.value;
-  cookieStore.delete(GOOGLE_OAUTH_STATE_COOKIE);
+  cookieStore.set(GOOGLE_OAUTH_STATE_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: getEnv().NODE_ENV === "production",
+    maxAge: 0,
+    path: "/api/auth/google/callback",
+  });
   try {
     const state = url.searchParams.get("state") ?? "";
     const code = url.searchParams.get("code") ?? "";
