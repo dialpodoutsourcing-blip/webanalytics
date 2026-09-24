@@ -7,9 +7,8 @@ type Property = { id: string; label: string; type: string };
 export function PropertyPicker({ onChange }: { onChange?: (value: string) => void }) {
   const [items,setItems]=useState<Property[]>([]); const [error,setError]=useState("");
   useEffect(()=>{fetch('/api/properties').then(r=>r.json()).then(v=>v.data?setItems(v.data):setError(v.error)).catch(()=>setError('Unable to load properties.'))},[]);
-  return <div className="property-picker"><label title="Choose which verified Search Console website supplies this report">Search Console property<select aria-label="Search Console property" title="Choose a website property" onChange={e=>onChange?.(e.target.value)} defaultValue=""><option value="" disabled>{items.length?'Choose a property':'No property selected'}</option>{items.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></label>{error&&<LinkConnect message={error}/>}</div>;
+  return <div className="property-picker"><label title="Choose which verified Search Console website supplies this report">Search Console property<select aria-label="Search Console property" title="Choose a website property" onChange={e=>onChange?.(e.target.value)} defaultValue=""><option value="" disabled>{items.length?'Choose a property':'No property selected'}</option>{items.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></label>{error&&<p className="inline-error">{error}</p>}</div>;
 }
-function LinkConnect({message}:{message:string}) { return <p className="inline-error">{message} <a href="/settings">Connect Google</a></p> }
 export function readOverviewPerformance(value: unknown): ReportData {
   if (!value || typeof value !== "object" || !("summary" in value) || !("rows" in value) || !Array.isArray((value as ReportData).rows)) throw new Error("Invalid performance response");
   return value as ReportData;
