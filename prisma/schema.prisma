@@ -3,8 +3,25 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum LocationStatus {
+  OPEN
+  CLOSED
+  UNKNOWN
+}
+
+enum KeywordSource {
+  GBP_SUGGESTED
+  MANUAL
+}
+
+enum KeywordState {
+  SUGGESTED
+  APPROVED
+  PAUSED
 }
 
 model GoogleConnection {
@@ -39,4 +56,60 @@ model OAuthState {
   stateHash String   @id
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+model BusinessLocation {
+  id                 String              @id @default(cuid())
+  googleLocationId   String              @unique
+  googleAccountId    String
+  title              String
+  address            String?
+  latitude           Float?
+  longitude          Float?
+  primaryCategory    String?
+  status             LocationStatus      @default(UNKNOWN)
+  isTrackingActive   Boolean             @default(false)
+  lastSynchronizedAt DateTime
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  keywords           TrackedKeyword[]
+  analyticsCache     GbpAnalyticsCache[]
+
+  @@index([googleAccountId])
+  @@index([title])
+}
+
+model TrackedKeyword {
+  id                 String           @id @default(cuid())
+  businessLocationId String
+  displayKeyword     String
+  normalizedKeyword  String
+  source             KeywordSource
+  state              KeywordState     @default(SUGGESTED)
+  defaultGridSize    Int              @default(7)
+  radiusKm           Float            @default(2)
+  languageCode       String           @default("en")
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  businessLocation   BusinessLocation @relation(fields: [businessLocationId], references: [id], onDelete: Cascade)
+
+  @@unique([businessLocationId, normalizedKeyword])
+  @@index([businessLocationId, state])
+}
+
+model GbpAnalyticsCache {
+  id                 String           @id @default(cuid())
+  businessLocationId String
+  reportType         String
+  startDate          DateTime
+  endDate            DateTime
+  payloadJson        String
+  fetchedAt          DateTime
+  expiresAt          DateTime
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  businessLocation   BusinessLocation @relation(fields: [businessLocationId], references: [id], onDelete: Cascade)
+
+  @@unique([businessLocationId, reportType, startDate, endDate])
+  @@index([expiresAt])
 }

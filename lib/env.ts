@@ -16,6 +16,9 @@ const schema = z.object({
   if (value.NODE_ENV === "production" && value.PORTAL_PASSWORD === "admin") {
     ctx.addIssue({ code: "custom", path: ["PORTAL_PASSWORD"], message: "PORTAL_PASSWORD must be changed in production" });
   }
+  if (value.NODE_ENV === "production" && !value.DATABASE_URL.startsWith("postgresql://") && !value.DATABASE_URL.startsWith("postgres://")) {
+    ctx.addIssue({ code: "custom", path: ["DATABASE_URL"], message: "DATABASE_URL must use PostgreSQL in production" });
+  }
 });
 
 export type Env = z.infer<typeof schema>;

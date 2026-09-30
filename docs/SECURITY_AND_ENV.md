@@ -71,7 +71,9 @@ The final `.env.example` will use placeholders and contain no working secret. `.
 - Settings is the only connect/reconnect path; normal report pages never ask users to connect their own Google account.
 - Reauthorization path for revoked grants or an unreadable shared connection.
 
-The Blob integration supplies `BLOB_READ_WRITE_TOKEN` or OIDC-managed Blob credentials to server code. Do not copy these credentials into tracked files or expose the Blob URL to the browser. `DATABASE_URL` remains available for legacy Prisma models, but the production Google OAuth and Search Console connection path does not read or write SQLite.
+The Blob integration supplies `BLOB_READ_WRITE_TOKEN` or OIDC-managed Blob credentials to server code. Do not copy these credentials into tracked files or expose the Blob URL to the browser. `DATABASE_URL` must point to durable PostgreSQL storage in production. Local development also uses PostgreSQL so Prisma migrations have one consistent provider. The production Google OAuth connection remains in private Blob storage; GBP locations, keyword settings, analytics caches, and later geo-grid history use PostgreSQL.
+
+After configuring the database, run `npx prisma migrate deploy` in deployed environments. Use `npx prisma migrate dev` only when creating a local development migration.
 
 ## 6. Input and response safety
 

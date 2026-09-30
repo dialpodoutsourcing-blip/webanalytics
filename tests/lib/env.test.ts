@@ -7,7 +7,7 @@ const valid = {
   PORTAL_PASSWORD: "admin",
   SESSION_SECRET: "12345678901234567890123456789012",
   APP_URL: "http://localhost:3000",
-  DATABASE_URL: "file:./dev.db",
+  DATABASE_URL: "postgresql://portal:portal@localhost:5432/web_analytics",
   GOOGLE_CLIENT_ID: "client",
   GOOGLE_CLIENT_SECRET: "secret",
   GOOGLE_OAUTH_REDIRECT_URI: "http://localhost:3000/api/auth/google/callback",
@@ -26,5 +26,9 @@ describe("parseEnv", () => {
 
   it("rejects the admin password in production", () => {
     expect(() => parseEnv({ ...valid, NODE_ENV: "production" })).toThrow(/PORTAL_PASSWORD/);
+  });
+
+  it("rejects ephemeral SQLite storage in production", () => {
+    expect(() => parseEnv({ ...valid, NODE_ENV: "production", PORTAL_PASSWORD: "secure", DATABASE_URL: "file:./prod.db" })).toThrow(/DATABASE_URL/);
   });
 });
