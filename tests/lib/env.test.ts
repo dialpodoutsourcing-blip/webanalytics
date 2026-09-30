@@ -13,6 +13,13 @@ const valid = {
   GOOGLE_OAUTH_REDIRECT_URI: "http://localhost:3000/api/auth/google/callback",
   GOOGLE_CRUX_API_KEY: "key",
   TOKEN_ENCRYPTION_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+  DATAFORSEO_LOGIN: "login",
+  DATAFORSEO_PASSWORD: "password",
+  GEOGRID_MAX_SCAN_USD: "1",
+  GEOGRID_WEEKLY_LIMIT_USD: "10",
+  GEOGRID_MONTHLY_LIMIT_USD: "30",
+  GEOGRID_SCHEDULER_SECRET: "12345678901234567890123456789012",
+  NEXT_PUBLIC_MAP_TILE_URL: "https://tiles.example.com/{z}/{x}/{y}.png",
 };
 
 describe("parseEnv", () => {
@@ -30,5 +37,9 @@ describe("parseEnv", () => {
 
   it("rejects ephemeral SQLite storage in production", () => {
     expect(() => parseEnv({ ...valid, NODE_ENV: "production", PORTAL_PASSWORD: "secure", DATABASE_URL: "file:./prod.db" })).toThrow(/DATABASE_URL/);
+  });
+
+  it("rejects non-positive geo-grid spending limits", () => {
+    expect(() => parseEnv({ ...valid, GEOGRID_MAX_SCAN_USD: "0" })).toThrow(/GEOGRID_MAX_SCAN_USD/);
   });
 });
