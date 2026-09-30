@@ -9,7 +9,7 @@ describe("GBP performance", () => {
   });
 
   it("preserves zero values and leaves absent series empty", () => {
-    expect(normalizeDailyMetrics({ multiDailyMetricTimeSeries: [{ dailyMetric: "CALL_CLICKS", dailyMetricTimeSeries: { timeSeries: { datedValues: [{ date: { year: 2026, month: 9, day: 1 }, value: "0" }] } } }] })).toMatchObject({
+    expect(normalizeDailyMetrics({ multiDailyMetricTimeSeries: [{ dailyMetricTimeSeries: [{ dailyMetric: "CALL_CLICKS", timeSeries: { datedValues: [{ date: { year: 2026, month: 9, day: 1 }, value: "0" }] } }] }] })).toMatchObject({
       calls: [{ date: "2026-09-01", value: 0 }], directions: [], websiteClicks: [], impressions: [],
     });
   });

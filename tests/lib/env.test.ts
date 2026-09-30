@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseEnv } from "@/lib/env";
+import { parseEnv, parseGeoGridEnv } from "@/lib/env";
 
 const valid = {
   NODE_ENV: "development",
@@ -18,7 +18,7 @@ const valid = {
   GEOGRID_MAX_SCAN_USD: "1",
   GEOGRID_WEEKLY_LIMIT_USD: "10",
   GEOGRID_MONTHLY_LIMIT_USD: "30",
-  GEOGRID_SCHEDULER_SECRET: "12345678901234567890123456789012",
+  CRON_SECRET: "12345678901234567890123456789012",
   NEXT_PUBLIC_MAP_TILE_URL: "https://tiles.example.com/{z}/{x}/{y}.png",
 };
 
@@ -40,6 +40,6 @@ describe("parseEnv", () => {
   });
 
   it("rejects non-positive geo-grid spending limits", () => {
-    expect(() => parseEnv({ ...valid, GEOGRID_MAX_SCAN_USD: "0" })).toThrow(/GEOGRID_MAX_SCAN_USD/);
+    expect(() => parseGeoGridEnv({ ...valid, GEOGRID_MAX_SCAN_USD: "0" })).toThrow(/GEOGRID_MAX_SCAN_USD/);
   });
 });

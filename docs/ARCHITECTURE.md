@@ -13,7 +13,7 @@ Browser
       -> CrUX adapter
       -> Cache service
       -> Prisma
-          -> SQLite
+          -> PostgreSQL
 ```
 
 Google credentials, OAuth tokens, session secrets, and database access never pass to browser code.
@@ -46,7 +46,7 @@ Builds deterministic keys from property, report, filters, and date range. It ret
 
 ### Persistence
 
-Prisma provides typed access to SQLite for OAuth credentials, selected-property preferences, cached responses, and operational metadata.
+Prisma provides typed access to PostgreSQL for synchronized GBP locations, analytics caches, tracked keywords, scan history, and operational metadata. The shared Google OAuth token remains in private Vercel Blob storage.
 
 ## 3. Request flow
 
@@ -97,5 +97,5 @@ Logs retain diagnostic details on the server. Browser messages remain useful wit
 
 ## 7. Deployment assumptions
 
-Phase 1 targets a conventional Node.js host with persistent disk because SQLite and the stored OAuth refresh token require durable storage. A serverless host with an ephemeral filesystem is not compatible unless SQLite is replaced by a managed database.
+Production uses managed PostgreSQL so scan history and cost reservations remain durable on serverless hosts. Apply committed migrations with `npm run db:init` before starting the application.
 

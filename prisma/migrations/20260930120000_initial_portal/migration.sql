@@ -1,0 +1,44 @@
+CREATE TYPE "LocationStatus" AS ENUM ('OPEN', 'CLOSED', 'UNKNOWN');
+CREATE TYPE "KeywordSource" AS ENUM ('GBP_SUGGESTED', 'MANUAL');
+CREATE TYPE "KeywordState" AS ENUM ('SUGGESTED', 'APPROVED', 'PAUSED');
+CREATE TYPE "ScanStatus" AS ENUM ('QUEUED', 'SUBMITTING', 'RUNNING', 'COMPLETE', 'PARTIAL', 'FAILED');
+CREATE TYPE "PointStatus" AS ENUM ('PENDING', 'SUBMITTED', 'COMPLETE', 'RETRYABLE_FAILED', 'PERMANENT_FAILED');
+CREATE TYPE "RequestOrigin" AS ENUM ('MANUAL', 'SCHEDULED', 'RETRY');
+
+CREATE TABLE "GoogleConnection" ("id" TEXT PRIMARY KEY, "accountEmail" TEXT, "accessTokenEncrypted" TEXT, "refreshTokenEncrypted" TEXT, "scope" TEXT, "tokenExpiresAt" TIMESTAMP(3), "connectedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "AppSetting" ("key" TEXT PRIMARY KEY, "value" TEXT NOT NULL, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "CachedReport" ("id" TEXT PRIMARY KEY, "cacheKey" TEXT NOT NULL, "reportType" TEXT NOT NULL, "propertyId" TEXT, "parametersJson" TEXT NOT NULL, "payloadJson" TEXT NOT NULL, "fetchedAt" TIMESTAMP(3) NOT NULL, "expiresAt" TIMESTAMP(3) NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "OAuthState" ("stateHash" TEXT PRIMARY KEY, "expiresAt" TIMESTAMP(3) NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE "BusinessLocation" ("id" TEXT PRIMARY KEY, "googleLocationId" TEXT NOT NULL, "googleAccountId" TEXT NOT NULL, "mapsPlaceId" TEXT, "title" TEXT NOT NULL, "address" TEXT, "latitude" DOUBLE PRECISION, "longitude" DOUBLE PRECISION, "primaryCategory" TEXT, "status" "LocationStatus" NOT NULL DEFAULT 'UNKNOWN', "isTrackingActive" BOOLEAN NOT NULL DEFAULT false, "lastSynchronizedAt" TIMESTAMP(3) NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "TrackedKeyword" ("id" TEXT PRIMARY KEY, "businessLocationId" TEXT NOT NULL, "displayKeyword" TEXT NOT NULL, "normalizedKeyword" TEXT NOT NULL, "source" "KeywordSource" NOT NULL, "state" "KeywordState" NOT NULL DEFAULT 'SUGGESTED', "defaultGridSize" INTEGER NOT NULL DEFAULT 7, "radiusKm" DOUBLE PRECISION NOT NULL DEFAULT 2, "languageCode" TEXT NOT NULL DEFAULT 'en', "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "GeoGridScan" ("id" TEXT PRIMARY KEY, "businessLocationId" TEXT NOT NULL, "trackedKeywordId" TEXT NOT NULL, "fingerprint" TEXT NOT NULL, "keyword" TEXT NOT NULL, "centerLatitude" DOUBLE PRECISION NOT NULL, "centerLongitude" DOUBLE PRECISION NOT NULL, "gridSize" INTEGER NOT NULL, "radiusKm" DOUBLE PRECISION NOT NULL, "languageCode" TEXT NOT NULL, "providerMethod" TEXT NOT NULL, "origin" "RequestOrigin" NOT NULL, "status" "ScanStatus" NOT NULL DEFAULT 'QUEUED', "pointCount" INTEGER NOT NULL, "completedCount" INTEGER NOT NULL DEFAULT 0, "failedCount" INTEGER NOT NULL DEFAULT 0, "estimatedCostUsd" DECIMAL(12,6) NOT NULL, "actualCostUsd" DECIMAL(12,6) NOT NULL DEFAULT 0, "failureCode" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "startedAt" TIMESTAMP(3), "completedAt" TIMESTAMP(3), "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "GeoGridPoint" ("id" TEXT PRIMARY KEY, "scanId" TEXT NOT NULL, "row" INTEGER NOT NULL, "column" INTEGER NOT NULL, "latitude" DOUBLE PRECISION NOT NULL, "longitude" DOUBLE PRECISION NOT NULL, "status" "PointStatus" NOT NULL DEFAULT 'PENDING', "providerTaskId" TEXT, "targetRank" INTEGER, "targetPlaceId" TEXT, "matchConfidence" TEXT, "costUsd" DECIMAL(12,6) NOT NULL DEFAULT 0, "failureCode" TEXT, "retryCount" INTEGER NOT NULL DEFAULT 0, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "GeoGridCompetitor" ("id" TEXT PRIMARY KEY, "pointId" TEXT NOT NULL, "placeId" TEXT, "name" TEXT NOT NULL, "rank" INTEGER NOT NULL, "address" TEXT);
+CREATE TABLE "ProviderSpend" ("id" TEXT PRIMARY KEY, "scanId" TEXT, "amountUsd" DECIMAL(12,6) NOT NULL, "incurredAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE "GbpAnalyticsCache" ("id" TEXT PRIMARY KEY, "businessLocationId" TEXT NOT NULL, "reportType" TEXT NOT NULL, "startDate" TIMESTAMP(3) NOT NULL, "endDate" TIMESTAMP(3) NOT NULL, "payloadJson" TEXT NOT NULL, "fetchedAt" TIMESTAMP(3) NOT NULL, "expiresAt" TIMESTAMP(3) NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+
+CREATE UNIQUE INDEX "CachedReport_cacheKey_key" ON "CachedReport"("cacheKey");
+CREATE INDEX "CachedReport_reportType_propertyId_idx" ON "CachedReport"("reportType", "propertyId");
+CREATE UNIQUE INDEX "BusinessLocation_googleLocationId_key" ON "BusinessLocation"("googleLocationId");
+CREATE INDEX "BusinessLocation_googleAccountId_idx" ON "BusinessLocation"("googleAccountId");
+CREATE INDEX "BusinessLocation_title_idx" ON "BusinessLocation"("title");
+CREATE INDEX "TrackedKeyword_businessLocationId_state_idx" ON "TrackedKeyword"("businessLocationId", "state");
+CREATE UNIQUE INDEX "TrackedKeyword_businessLocationId_normalizedKeyword_key" ON "TrackedKeyword"("businessLocationId", "normalizedKeyword");
+CREATE UNIQUE INDEX "GeoGridScan_fingerprint_key" ON "GeoGridScan"("fingerprint");
+CREATE INDEX "GeoGridScan_status_createdAt_idx" ON "GeoGridScan"("status", "createdAt");
+CREATE INDEX "GeoGridScan_businessLocationId_trackedKeywordId_createdAt_idx" ON "GeoGridScan"("businessLocationId", "trackedKeywordId", "createdAt");
+CREATE UNIQUE INDEX "GeoGridPoint_providerTaskId_key" ON "GeoGridPoint"("providerTaskId");
+CREATE INDEX "GeoGridPoint_scanId_status_idx" ON "GeoGridPoint"("scanId", "status");
+CREATE UNIQUE INDEX "GeoGridPoint_scanId_row_column_key" ON "GeoGridPoint"("scanId", "row", "column");
+CREATE INDEX "GeoGridCompetitor_pointId_rank_idx" ON "GeoGridCompetitor"("pointId", "rank");
+CREATE INDEX "ProviderSpend_incurredAt_idx" ON "ProviderSpend"("incurredAt");
+CREATE INDEX "GbpAnalyticsCache_expiresAt_idx" ON "GbpAnalyticsCache"("expiresAt");
+CREATE UNIQUE INDEX "GbpAnalyticsCache_businessLocationId_reportType_startDate_e_key" ON "GbpAnalyticsCache"("businessLocationId", "reportType", "startDate", "endDate");
+
+ALTER TABLE "TrackedKeyword" ADD CONSTRAINT "TrackedKeyword_businessLocationId_fkey" FOREIGN KEY ("businessLocationId") REFERENCES "BusinessLocation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "GeoGridScan" ADD CONSTRAINT "GeoGridScan_businessLocationId_fkey" FOREIGN KEY ("businessLocationId") REFERENCES "BusinessLocation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "GeoGridScan" ADD CONSTRAINT "GeoGridScan_trackedKeywordId_fkey" FOREIGN KEY ("trackedKeywordId") REFERENCES "TrackedKeyword"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "GeoGridPoint" ADD CONSTRAINT "GeoGridPoint_scanId_fkey" FOREIGN KEY ("scanId") REFERENCES "GeoGridScan"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "GeoGridCompetitor" ADD CONSTRAINT "GeoGridCompetitor_pointId_fkey" FOREIGN KEY ("pointId") REFERENCES "GeoGridPoint"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ProviderSpend" ADD CONSTRAINT "ProviderSpend_scanId_fkey" FOREIGN KEY ("scanId") REFERENCES "GeoGridScan"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "GbpAnalyticsCache" ADD CONSTRAINT "GbpAnalyticsCache_businessLocationId_fkey" FOREIGN KEY ("businessLocationId") REFERENCES "BusinessLocation"("id") ON DELETE CASCADE ON UPDATE CASCADE;

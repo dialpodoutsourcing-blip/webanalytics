@@ -100,7 +100,7 @@ After configuring the database, run `npx prisma migrate deploy` in deployed envi
 
 ## 8. Geo-grid operations
 
-- Keep `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`, and `GEOGRID_SCHEDULER_SECRET` server-only.
+- Keep `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`, and `CRON_SECRET` server-only. Vercel Cron sends `CRON_SECRET` as its Bearer token.
 - Configure positive per-scan, weekly, and monthly USD limits before enabling scans.
 - Configure `NEXT_PUBLIC_MAP_TILE_URL` for a production-capable tile provider and retain visible attribution.
 - Vercel Cron calls `/api/jobs/geogrid` weekly; only the dedicated Bearer secret authorizes it.

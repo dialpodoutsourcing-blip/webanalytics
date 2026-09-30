@@ -30,3 +30,13 @@ it("creates and submits each point after cost admission", async () => {
   expect(repo.saveSubmitted).toHaveBeenCalledWith("scan", expect.arrayContaining([expect.objectContaining({ providerTaskId: "task-0" })]));
   expect(result).toMatchObject({ status: "RUNNING" });
 });
+
+it("batches large grids and persists the requested immutable radius", async () => {
+  const repo = { getTarget: vi.fn(async () => target), findByFingerprint: vi.fn(async () => null), getSpend: vi.fn(async () => ({ weekMicroUsd: 0, monthMicroUsd: 0 })), create: vi.fn(async (input: {config:{size:number;radiusKm:number}}) => { void input; return { id: "scan" }; }), saveSubmitted: vi.fn(async () => ({ id: "scan", status: "RUNNING" })) };
+  const provider = { submitMapTasks: vi.fn(async (requests: unknown[]) => requests.map((_, index) => ({ id: `task-${index}`, costUsd: .0006 }))) };
+  await createScan({ locationId: "locations/1", keywordId: "key", gridSize: 11, radiusKm: 3 }, "MANUAL", { ...options, limits: { maxScanMicroUsd: 200000, weeklyLimitMicroUsd: 200000, monthlyLimitMicroUsd: 200000 }, repo, provider });
+  expect(provider.submitMapTasks).toHaveBeenCalledTimes(2);
+  expect(provider.submitMapTasks.mock.calls[0][0]).toHaveLength(100);
+  expect(provider.submitMapTasks.mock.calls[1][0]).toHaveLength(21);
+  expect(repo.create.mock.calls[0][0].config).toEqual({ size: 11, radiusKm: 3 });
+});

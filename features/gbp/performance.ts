@@ -12,7 +12,8 @@ const requestSchema = z.object({ locationId: z.string().min(1), startDate: z.iso
 
 export type GbpAnalyticsRequest = z.infer<typeof requestSchema>;
 type Point = { date: string; value: number };
-export type GbpAnalyticsReport = { locationId: string; startDate: string; endDate: string; daily: { calls: Point[]; directions: Point[]; websiteClicks: Point[]; impressions: Point[] }; searchQueries: Array<{ keyword: string; impressions: number }>; fetchedAt: string };
+export type SearchQueryMetric = { keyword: string; impressions: number | null; threshold?: string };
+export type GbpAnalyticsReport = { locationId: string; startDate: string; endDate: string; daily: { calls: Point[]; directions: Point[]; websiteClicks: Point[]; impressions: Point[] }; searchQueries: SearchQueryMetric[]; fetchedAt: string };
 
 export function parseGbpAnalyticsRequest(input: unknown) { return requestSchema.parse(input); }
 
@@ -20,11 +21,12 @@ function isoDate(value: { year?: number | null; month?: number | null; day?: num
   return `${String(value.year).padStart(4, "0")}-${String(value.month).padStart(2, "0")}-${String(value.day).padStart(2, "0")}`;
 }
 
-export function normalizeDailyMetrics(input: { multiDailyMetricTimeSeries?: Array<{ dailyMetric?: string | null; dailyMetricTimeSeries?: { timeSeries?: { datedValues?: Array<{ date?: { year?: number | null; month?: number | null; day?: number | null }; value?: string | number | null }> } } }> }) {
+type DailySeries = { dailyMetric?: string | null; timeSeries?: { datedValues?: Array<{ date?: { year?: number | null; month?: number | null; day?: number | null }; value?: string | number | null }> } };
+export function normalizeDailyMetrics(input: { multiDailyMetricTimeSeries?: Array<{ dailyMetricTimeSeries?: DailySeries[] }> }) {
   const result = { calls: [] as Point[], directions: [] as Point[], websiteClicks: [] as Point[], impressions: [] as Point[] };
   const impressionTotals = new Map<string, number>();
-  for (const series of input.multiDailyMetricTimeSeries ?? []) {
-    const points = (series.dailyMetricTimeSeries?.timeSeries?.datedValues ?? []).flatMap((entry) => entry.date ? [{ date: isoDate(entry.date), value: Number(entry.value ?? 0) }] : []);
+  for (const group of input.multiDailyMetricTimeSeries ?? []) for (const series of group.dailyMetricTimeSeries ?? []) {
+    const points = (series.timeSeries?.datedValues ?? []).flatMap((entry) => entry.date ? [{ date: isoDate(entry.date), value: Number(entry.value ?? 0) }] : []);
     if (series.dailyMetric === "CALL_CLICKS") result.calls = points;
     else if (series.dailyMetric === "BUSINESS_DIRECTION_REQUESTS") result.directions = points;
     else if (series.dailyMetric === "WEBSITE_CLICKS") result.websiteClicks = points;
@@ -34,7 +36,7 @@ export function normalizeDailyMetrics(input: { multiDailyMetricTimeSeries?: Arra
   return result;
 }
 
-export type GbpPerformanceClient = { fetchDaily(input: GbpAnalyticsRequest): Promise<unknown>; fetchKeywords(input: GbpAnalyticsRequest): Promise<Array<{ keyword: string; impressions: number }>> };
+export type GbpPerformanceClient = { fetchDaily(input: GbpAnalyticsRequest): Promise<unknown>; fetchKeywords(input: GbpAnalyticsRequest): Promise<SearchQueryMetric[]> };
 type Cache = { read(input: GbpAnalyticsRequest): Promise<{ report: GbpAnalyticsReport; fresh: boolean } | null>; write(input: GbpAnalyticsRequest, report: GbpAnalyticsReport): Promise<void> };
 
 async function googleRequest(url: URL) {
@@ -55,9 +57,17 @@ const productionClient: GbpPerformanceClient = {
     return await googleRequest(url);
   },
   async fetchKeywords(input) {
-    const url = new URL(`https://businessprofileperformance.googleapis.com/v1/${input.locationId}/searchkeywords/impressions/monthly`);
-    const body = await googleRequest(url); const values = body.searchKeywordsCounts as Array<{ searchKeyword?: string; insightsValue?: { value?: string | number } }> | undefined;
-    return (values ?? []).map((entry) => ({ keyword: entry.searchKeyword ?? "", impressions: Number(entry.insightsValue?.value ?? 0) })).filter((entry) => entry.keyword);
+    const values: Array<{ searchKeyword?: string; insightsValue?: { value?: string | number; threshold?: string } }> = [];
+    let pageToken: string | undefined;
+    do {
+      const url = new URL(`https://businessprofileperformance.googleapis.com/v1/${input.locationId}/searchkeywords/impressions/monthly`);
+      const start = new Date(`${input.startDate}T00:00:00Z`); const end = new Date(`${input.endDate}T00:00:00Z`);
+      url.searchParams.set("monthlyRange.startMonth.year", String(start.getUTCFullYear())); url.searchParams.set("monthlyRange.startMonth.month", String(start.getUTCMonth() + 1));
+      url.searchParams.set("monthlyRange.endMonth.year", String(end.getUTCFullYear())); url.searchParams.set("monthlyRange.endMonth.month", String(end.getUTCMonth() + 1));
+      url.searchParams.set("pageSize", "100"); if (pageToken) url.searchParams.set("pageToken", pageToken);
+      const body = await googleRequest(url); values.push(...((body.searchKeywordsCounts as typeof values | undefined) ?? [])); pageToken = body.nextPageToken as string | undefined;
+    } while (pageToken);
+    return values.map((entry) => ({ keyword: entry.searchKeyword ?? "", impressions: entry.insightsValue?.value == null ? null : Number(entry.insightsValue.value), threshold: entry.insightsValue?.threshold })).filter((entry) => entry.keyword);
   },
 };
 

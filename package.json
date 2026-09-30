@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "check": "npm run lint && npm run typecheck",
-    "db:init": "node scripts/init-db.mjs"
+    "db:init": "prisma migrate deploy"
   },
   "dependencies": {
     "@prisma/client": "^6.19.1",

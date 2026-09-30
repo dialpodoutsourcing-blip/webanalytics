@@ -26,7 +26,7 @@ Geo-grid scans default to 7×7, show their estimated DataForSEO cost before subm
 - Next.js with the App Router and TypeScript
 - Node.js server routes
 - Tailwind CSS
-- SQLite and Prisma
+- PostgreSQL and Prisma
 - Google Search Console API
 - Chrome UX Report API
 

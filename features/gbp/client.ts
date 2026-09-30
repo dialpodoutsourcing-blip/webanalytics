@@ -30,7 +30,7 @@ export function createGbpClient(deps: ClientDependencies): GbpClient {
     },
     async listLocations(accountName, pageToken) {
       const url = new URL(`https://mybusinessbusinessinformation.googleapis.com/v1/${accountName}/locations`);
-      url.searchParams.set("readMask", "name,title,storefrontAddress,latlng,openInfo,categories");
+      url.searchParams.set("readMask", "name,title,storefrontAddress,latlng,openInfo,categories,metadata");
       if (pageToken) url.searchParams.set("pageToken", pageToken);
       return await request(url);
     },

@@ -1,4 +1,4 @@
-import { beforeEach,expect,it,vi } from "vitest";const mocks=vi.hoisted(()=>({run:vi.fn()}));vi.mock("@/features/geogrid/scheduler",()=>({runGeoGridSchedule:mocks.run}));vi.mock("@/lib/env",()=>({getEnv:()=>({GEOGRID_SCHEDULER_SECRET:"scheduler-secret-123456789012345"})}));import { POST } from "@/app/api/jobs/geogrid/route";
+import { beforeEach,expect,it,vi } from "vitest";const mocks=vi.hoisted(()=>({run:vi.fn()}));vi.mock("@/features/geogrid/scheduler",()=>({runGeoGridSchedule:mocks.run}));vi.mock("@/lib/env",()=>({getGeoGridEnv:()=>({CRON_SECRET:"scheduler-secret-123456789012345"})}));import { POST } from "@/app/api/jobs/geogrid/route";
 beforeEach(()=>{vi.clearAllMocks();mocks.run.mockResolvedValue({considered:0,created:0,failed:0});});
 it("rejects portal sessions without the scheduler bearer secret",async()=>{expect((await POST(new Request("https://test",{method:"POST"}))).status).toBe(401);});
 it("runs with the dedicated secret",async()=>{const response=await POST(new Request("https://test",{method:"POST",headers:{authorization:"Bearer scheduler-secret-123456789012345"}}));expect(response.status).toBe(200);expect(mocks.run).toHaveBeenCalledOnce();});

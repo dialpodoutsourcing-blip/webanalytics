@@ -9,8 +9,8 @@ export type BusinessLocationStore = {
 
 const prismaLocationStore: BusinessLocationStore = {
   async upsert(value) {
-    const { googleLocationId, ...data } = value;
-    return await prisma.businessLocation.upsert({ where: { googleLocationId }, create: { googleLocationId, ...data }, update: data });
+    const { googleLocationId, isTrackingActive, ...providerData } = value;
+    return await prisma.businessLocation.upsert({ where: { googleLocationId }, create: { googleLocationId, isTrackingActive, ...providerData }, update: providerData });
   },
   async list() {
     return await prisma.businessLocation.findMany({ orderBy: [{ title: "asc" }, { address: "asc" }] });
@@ -53,6 +53,7 @@ export async function syncBusinessLocations(deps: { client?: GbpClient; store?: 
         await store.upsert({
           googleLocationId: location.name,
           googleAccountId: account,
+          mapsPlaceId: location.metadata?.placeId ?? null,
           title: location.title?.trim() || location.name,
           address: addressOf(location),
           latitude: coordinates?.latitude ?? null,

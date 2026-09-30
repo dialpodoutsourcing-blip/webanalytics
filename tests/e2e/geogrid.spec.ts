@@ -27,6 +27,7 @@ test("an authenticated user explicitly starts and reads a geo-grid scan", async 
       },
     },
   }));
+  await page.route("https://tile.openstreetmap.org/**", (route) => route.fulfill({ status: 204 }));
 
   await page.goto("/local-seo/geogrid");
   await page.getByLabel("Business Profile location").selectOption("locations/1");
@@ -34,4 +35,5 @@ test("an authenticated user explicitly starts and reads a geo-grid scan", async 
   await expect(page.getByText("49 points")).toBeVisible();
   await page.getByRole("button", { name: "Run new scan" }).click();
   await expect(page.getByRole("cell", { name: "2", exact: true })).toBeVisible();
+  await expect(page.locator(".leaflet-interactive")).toHaveCount(1);
 });

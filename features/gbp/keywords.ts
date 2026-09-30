@@ -17,17 +17,27 @@ export async function createKeyword(input: z.infer<typeof createKeywordInput>) {
   const value = createKeywordInput.parse(input); const location = await prisma.businessLocation.findUnique({ where: { googleLocationId: value.locationId } });
   if (!location) throw new AppError("INVALID_INPUT");
   const normalizedKeyword = normalizeKeyword(value.keyword); const state = value.source === "MANUAL" ? "APPROVED" : "SUGGESTED";
-  return await prisma.trackedKeyword.upsert({
-    where: { businessLocationId_normalizedKeyword: { businessLocationId: location.id, normalizedKeyword } },
-    create: { businessLocationId: location.id, displayKeyword: value.keyword.trim(), normalizedKeyword, source: value.source, state },
-    update: { displayKeyword: value.keyword.trim() },
+  return await prisma.$transaction(async (tx) => {
+    const keyword = await tx.trackedKeyword.upsert({
+      where: { businessLocationId_normalizedKeyword: { businessLocationId: location.id, normalizedKeyword } },
+      create: { businessLocationId: location.id, displayKeyword: value.keyword.trim(), normalizedKeyword, source: value.source, state },
+      update: { displayKeyword: value.keyword.trim() },
+    });
+    if (state === "APPROVED") await tx.businessLocation.update({ where: { id: location.id }, data: { isTrackingActive: true } });
+    return keyword;
   });
 }
 
 export async function updateKeyword(input: z.infer<typeof updateKeywordInput>) {
-  const value = updateKeywordInput.parse(input); return await prisma.trackedKeyword.update({ where: { id: value.id }, data: { state: value.state } });
+  const value = updateKeywordInput.parse(input);
+  return await prisma.$transaction(async (tx) => {
+    const keyword = await tx.trackedKeyword.update({ where: { id: value.id }, data: { state: value.state } });
+    const approved = value.state === "APPROVED" ? 1 : await tx.trackedKeyword.count({ where: { businessLocationId: keyword.businessLocationId, state: "APPROVED" } });
+    await tx.businessLocation.update({ where: { id: keyword.businessLocationId }, data: { isTrackingActive: approved > 0 } });
+    return keyword;
+  });
 }
 
-export async function mergeSuggestedKeywords(locationId: string, suggestions: Array<{ keyword: string; impressions: number }>) {
+export async function mergeSuggestedKeywords(locationId: string, suggestions: Array<{ keyword: string; impressions: number | null }>) {
   return await Promise.all(suggestions.map(async (suggestion) => ({ ...(await createKeyword({ locationId, keyword: suggestion.keyword, source: "GBP_SUGGESTED" })), impressions: suggestion.impressions })));
 }

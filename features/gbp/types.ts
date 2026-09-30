@@ -2,6 +2,7 @@ export type BusinessLocationSummary = {
   id?: string;
   googleLocationId: string;
   googleAccountId: string;
+  mapsPlaceId?: string | null;
   title: string;
   address: string | null;
   latitude: number | null;
@@ -20,6 +21,7 @@ export type GbpLocation = {
   latlng?: { latitude?: number | null; longitude?: number | null } | null;
   openInfo?: { status?: string | null } | null;
   categories?: { primaryCategory?: { displayName?: string | null } | null } | null;
+  metadata?: { placeId?: string | null } | null;
 };
 
 export type GbpClient = {
