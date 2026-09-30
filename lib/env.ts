@@ -18,6 +18,7 @@ const schema = z.object({
   GEOGRID_WEEKLY_LIMIT_USD: z.coerce.number().positive(),
   GEOGRID_MONTHLY_LIMIT_USD: z.coerce.number().positive(),
   GEOGRID_SCHEDULER_SECRET: z.string().min(32),
+  GEOGRID_SCHEDULER_MAX_JOBS: z.coerce.number().int().min(1).max(100).default(10),
   NEXT_PUBLIC_MAP_TILE_URL: z.url(),
 }).superRefine((value, ctx) => {
   if (value.NODE_ENV === "production" && value.PORTAL_PASSWORD === "admin") {
