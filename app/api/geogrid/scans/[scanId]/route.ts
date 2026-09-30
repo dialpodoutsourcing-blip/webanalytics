@@ -1,0 +1,2 @@
+import { NextResponse } from "next/server";import { unauthorizedResponse } from "@/lib/route-auth";import { getScan } from "@/features/geogrid/scans";
+export async function GET(_request:Request,context:{params:Promise<{scanId:string}>}){const denied=await unauthorizedResponse();if(denied)return denied;try{return NextResponse.json({data:await getScan((await context.params).scanId)});}catch{return NextResponse.json({error:"Scan not found."},{status:404});}}

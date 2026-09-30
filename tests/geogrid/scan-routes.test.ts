@@ -1,0 +1,6 @@
+import { beforeEach,expect,it,vi } from "vitest";
+const mocks=vi.hoisted(()=>({unauthorized:vi.fn(),create:vi.fn(),get:vi.fn()}));vi.mock("@/lib/route-auth",()=>({unauthorizedResponse:mocks.unauthorized}));vi.mock("@/features/geogrid/scans",()=>({createScan:mocks.create,getScan:mocks.get}));
+import { POST } from "@/app/api/geogrid/scans/route";import { GET } from "@/app/api/geogrid/scans/[scanId]/route";
+beforeEach(()=>{vi.clearAllMocks();mocks.unauthorized.mockResolvedValue(null);mocks.create.mockResolvedValue({id:"scan"});mocks.get.mockResolvedValue({id:"scan"});});
+it("requires auth and explicit POST to create",async()=>{const denied=new Response(null,{status:401});mocks.unauthorized.mockResolvedValue(denied);expect(await POST(new Request("https://test",{method:"POST",body:"{}"}))).toBe(denied);});
+it("reads persisted status without creating provider work",async()=>{const response=await GET(new Request("https://test"),{params:Promise.resolve({scanId:"scan"})});expect(await response.json()).toEqual({data:{id:"scan"}});expect(mocks.create).not.toHaveBeenCalled();});
