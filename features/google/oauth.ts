@@ -4,7 +4,10 @@ import { AppError } from "@/lib/errors";
 import { blobConnectionStore, type ConnectionStore } from "./connection-store";
 import { decryptToken, encryptToken } from "./token-crypto";
 
-const scope = "https://www.googleapis.com/auth/webmasters.readonly";
+export const GOOGLE_OAUTH_SCOPES = [
+  "https://www.googleapis.com/auth/webmasters.readonly",
+  "https://www.googleapis.com/auth/business.manage",
+] as const;
 
 type OAuthClient = {
   generateAuthUrl(options: { access_type: "offline"; prompt: "consent"; scope: string[]; state: string }): string;
@@ -24,17 +27,20 @@ type OAuthDependencies = {
 export function createGoogleOAuthService(deps: OAuthDependencies) {
   return {
     beginGoogleOAuth(state: string) {
-      return deps.createClient().generateAuthUrl({ access_type: "offline", prompt: "consent", scope: [scope], state });
+      return deps.createClient().generateAuthUrl({ access_type: "offline", prompt: "consent", scope: [...GOOGLE_OAUTH_SCOPES], state });
     },
     async finishGoogleOAuth(code: string) {
       const { tokens } = await deps.createClient().getToken(code);
-      if (!tokens.refresh_token) throw new AppError("GOOGLE_REAUTH_REQUIRED", "Google did not return a refresh token.");
       let existing = null;
       try { existing = await deps.store.read(); } catch { existing = null; }
+      const refreshTokenEncrypted = tokens.refresh_token
+        ? deps.encrypt(tokens.refresh_token, deps.encryptionKey)
+        : existing?.refreshTokenEncrypted;
+      if (!refreshTokenEncrypted) throw new AppError("GOOGLE_REAUTH_REQUIRED", "Google did not return a refresh token.");
       const timestamp = deps.now().toISOString();
       await deps.store.write({
         version: 1,
-        refreshTokenEncrypted: deps.encrypt(tokens.refresh_token, deps.encryptionKey),
+        refreshTokenEncrypted,
         ...(tokens.scope ? { scope: tokens.scope } : {}),
         connectedAt: existing?.connectedAt ?? timestamp,
         updatedAt: timestamp,
@@ -56,6 +62,10 @@ export function createGoogleOAuthService(deps: OAuthDependencies) {
         const connection = await deps.store.read();
         if (!connection) return { connected: false, connectedAt: null, needsAttention: false };
         deps.decrypt(connection.refreshTokenEncrypted, deps.encryptionKey);
+        const grantedScopes = new Set((connection.scope ?? "").split(/\s+/).filter(Boolean));
+        if (GOOGLE_OAUTH_SCOPES.some((required) => !grantedScopes.has(required))) {
+          return { connected: false, connectedAt: connection.connectedAt, needsAttention: true };
+        }
         return { connected: true, connectedAt: connection.connectedAt, needsAttention: false };
       } catch {
         let connectedAt: string | null = null;

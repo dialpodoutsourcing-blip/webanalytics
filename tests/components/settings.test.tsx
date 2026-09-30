@@ -13,6 +13,7 @@ it("shows the shared owner connection and reconnect action", async () => {
   status.mockResolvedValue({ connected: true, connectedAt: "2026-09-24T12:00:00.000Z", needsAttention: false });
   render(await Settings({ searchParams: Promise.resolve({}) }));
   expect(screen.getByText("Connected owner Google account")).toBeInTheDocument();
+  expect(screen.getByText(/Search Console and Business Profile/i)).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Reconnect Google" })).toHaveAttribute("href", "/api/auth/google/start");
 });
 

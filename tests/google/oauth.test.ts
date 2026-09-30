@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { createGoogleOAuthService } from "@/features/google/oauth";
+import { createGoogleOAuthService, GOOGLE_OAUTH_SCOPES } from "@/features/google/oauth";
 import type { ConnectionStore } from "@/features/google/connection-store";
 import type { SharedGoogleConnection } from "@/features/google/connection-record";
 
-function setup(initial: SharedGoogleConnection | null = null, refreshToken: string | null = "plain-refresh-token") {
+function setup(initial: SharedGoogleConnection | null = null, refreshToken: string | null = "plain-refresh-token", grantedScope = GOOGLE_OAUTH_SCOPES.join(" ")) {
   let saved = initial;
   const store: ConnectionStore = {
     read: vi.fn(async () => saved),
@@ -11,7 +11,7 @@ function setup(initial: SharedGoogleConnection | null = null, refreshToken: stri
   };
   const oauth = {
     generateAuthUrl: vi.fn(({ state }: { state: string }) => `https://accounts.test/auth?state=${state}`),
-    getToken: vi.fn(async () => ({ tokens: { refresh_token: refreshToken ?? undefined, scope: "scope" } })),
+    getToken: vi.fn(async () => ({ tokens: { refresh_token: refreshToken ?? undefined, scope: grantedScope } })),
     setCredentials: vi.fn(),
   };
   const service = createGoogleOAuthService({
@@ -30,6 +30,10 @@ describe("shared Google OAuth service", () => {
     const { service, oauth } = setup();
     expect(service.beginGoogleOAuth("opaque-state")).toContain("state=opaque-state");
     expect(oauth.generateAuthUrl).toHaveBeenCalledWith(expect.objectContaining({ access_type: "offline", prompt: "consent", state: "opaque-state" }));
+    expect(GOOGLE_OAUTH_SCOPES).toEqual([
+      "https://www.googleapis.com/auth/webmasters.readonly",
+      "https://www.googleapis.com/auth/business.manage",
+    ]);
   });
 
   it("encrypts and stores a new refresh token", async () => {
@@ -43,6 +47,18 @@ describe("shared Google OAuth service", () => {
     const { service, store } = setup(null, null);
     await expect(service.finishGoogleOAuth("code")).rejects.toMatchObject({ code: "GOOGLE_REAUTH_REQUIRED" });
     expect(store.write).not.toHaveBeenCalled();
+  });
+
+  it("preserves an existing refresh token when reconnection omits it", async () => {
+    const initial: SharedGoogleConnection = { version: 1, refreshTokenEncrypted: "encrypted:existing", scope: "old", connectedAt: "2026-09-23T00:00:00.000Z", updatedAt: "2026-09-23T00:00:00.000Z" };
+    const { service, getSaved } = setup(initial, null);
+    await service.finishGoogleOAuth("code");
+    expect(getSaved()).toMatchObject({ refreshTokenEncrypted: "encrypted:existing", scope: GOOGLE_OAUTH_SCOPES.join(" "), connectedAt: initial.connectedAt });
+  });
+
+  it("requires reconnect when the saved grant lacks Business Profile access", async () => {
+    const initial: SharedGoogleConnection = { version: 1, refreshTokenEncrypted: "encrypted:refresh", scope: "https://www.googleapis.com/auth/webmasters.readonly", connectedAt: "2026-09-23T00:00:00.000Z", updatedAt: "2026-09-23T00:00:00.000Z" };
+    await expect(setup(initial).service.getConnectionStatus()).resolves.toEqual({ connected: false, connectedAt: initial.connectedAt, needsAttention: true });
   });
 
   it("throws when no shared connection exists", async () => {
