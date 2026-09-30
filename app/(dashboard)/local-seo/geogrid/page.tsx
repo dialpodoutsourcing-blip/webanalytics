@@ -1,0 +1,1 @@
+import { GeoGridWorkspace } from "@/components/local-seo/geogrid/geogrid-workspace";export default function GeoGridPage(){return <section><div className="page-title"><div><p>Local SEO</p><h2>Geo-Grid Rankings</h2></div><span className="date-chip">Google Maps observations</span></div><GeoGridWorkspace/></section>;}

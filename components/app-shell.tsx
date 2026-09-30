@@ -5,6 +5,7 @@ const items = [
   { href: "/", label: "Overview", icon: "◇", tip: "Summary of search performance and website health." },
   { href: "/performance", label: "Performance", icon: "↗", tip: "Explore clicks, impressions, queries, pages, countries, and devices." },
   { href: "/local-seo/analytics", label: "GBP Analytics", icon: "◎", tip: "Review Business Profile performance for every connected location." },
+  { href: "/local-seo/geogrid", label: "Geo-Grid Rankings", icon: "▦", tip: "Map local Google Maps rankings for approved keywords." },
   { href: "/indexing", label: "Indexing & Sitemaps", icon: "◉", tip: "Review indexing coverage and submitted sitemap status.", development: true },
   { href: "/inspect", label: "URL Inspection", icon: "⌕", tip: "Check how Google indexed a specific URL.", development: true },
   { href: "/vitals", label: "Core Web Vitals", icon: "◔", tip: "Review real-user LCP, INP, and CLS experience metrics.", development: true },
