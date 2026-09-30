@@ -1,0 +1,8 @@
+import { beforeEach, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ unauthorized: vi.fn(), list: vi.fn(), create: vi.fn(), update: vi.fn() }));
+vi.mock("@/lib/route-auth", () => ({ unauthorizedResponse: mocks.unauthorized }));
+vi.mock("@/features/gbp/keywords", async (original) => ({ ...await original<object>(), listLocationKeywords: mocks.list, createKeyword: mocks.create, updateKeyword: mocks.update }));
+import { GET, POST, PATCH } from "@/app/api/gbp/keywords/route";
+beforeEach(() => { vi.clearAllMocks(); mocks.unauthorized.mockResolvedValue(null); mocks.list.mockResolvedValue([]); mocks.create.mockResolvedValue({ id:"new" }); mocks.update.mockResolvedValue({ id:"key", state:"PAUSED" }); });
+it("protects every keyword operation", async () => { const denied = new Response(null,{status:401}); mocks.unauthorized.mockResolvedValue(denied); expect(await GET(new Request("https://test/api/gbp/keywords?locationId=x"))).toBe(denied); expect(await POST(new Request("https://test",{method:"POST",body:"{}"}))).toBe(denied); expect(await PATCH(new Request("https://test",{method:"PATCH",body:"{}"}))).toBe(denied); });
+it("supports explicit list, add, and pause operations", async () => { expect((await GET(new Request("https://test/api/gbp/keywords?locationId=locations/1"))).status).toBe(200); expect((await POST(new Request("https://test",{method:"POST",body:JSON.stringify({locationId:"locations/1",keyword:"vet",source:"MANUAL"})}))).status).toBe(201); expect((await PATCH(new Request("https://test",{method:"PATCH",body:JSON.stringify({id:"key",state:"PAUSED"})}))).status).toBe(200); });
