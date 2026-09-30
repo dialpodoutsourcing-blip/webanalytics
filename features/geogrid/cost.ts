@@ -1,0 +1,4 @@
+export function estimateScanCost(input:{pointCount:number;pricePerTaskMicroUsd:number}){return input.pointCount*input.pricePerTaskMicroUsd/1_000_000;}
+export type SpendInput={estimatedMicroUsd:number;spentWeekMicroUsd:number;spentMonthMicroUsd:number;maxScanMicroUsd:number;weeklyLimitMicroUsd:number;monthlyLimitMicroUsd:number};
+export type SpendDecision={allowed:true}|{allowed:false;reason:"SCAN_LIMIT"|"WEEKLY_LIMIT"|"MONTHLY_LIMIT"};
+export function checkSpendPolicy(input:SpendInput):SpendDecision{if(input.estimatedMicroUsd>input.maxScanMicroUsd)return{allowed:false,reason:"SCAN_LIMIT"};if(input.spentWeekMicroUsd+input.estimatedMicroUsd>input.weeklyLimitMicroUsd)return{allowed:false,reason:"WEEKLY_LIMIT"};if(input.spentMonthMicroUsd+input.estimatedMicroUsd>input.monthlyLimitMicroUsd)return{allowed:false,reason:"MONTHLY_LIMIT"};return{allowed:true};}
