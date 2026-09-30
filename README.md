@@ -19,6 +19,8 @@ This repository currently contains the approved product and technical documentat
 
 The Local SEO area supports synchronized Google Business Profile locations, official GBP performance metrics, monthly search-query discovery, and explicitly approved tracked keywords. Geo-grid rankings use a separate DataForSEO integration so third-party rank observations are never confused with Google's owned-profile analytics.
 
+Geo-grid scans default to 7×7, show their estimated DataForSEO cost before submission, run only after explicit confirmation or the protected weekly scheduler, and render numeric ranks on a Leaflet/OpenStreetMap map with an equivalent results table. Page views never submit paid tasks.
+
 ## Planned stack
 
 - Next.js with the App Router and TypeScript

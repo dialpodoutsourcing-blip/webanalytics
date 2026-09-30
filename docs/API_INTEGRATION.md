@@ -96,5 +96,5 @@ Where practical, the UI will link to the appropriate Search Console page for uns
 
 ## 8. Future GBP geo grid
 
-The first geo-grid milestone will use sample or imported data to validate the map interface and ranking visualization. Live local-rank scanning requires a separate, legally and technically appropriate ranking-data provider; it is not assumed to be available from the Search Console API.
+Live geo-grid scans use DataForSEO's Google Maps Standard Queue endpoint. Each coordinate is one billable task. The server estimates cost, enforces scan/weekly/monthly caps, fingerprints jobs to prevent duplicate submissions, stores provider task IDs, and polls results through authenticated internal routes. Current pricing must be reviewed before production limits change.
 

@@ -98,7 +98,16 @@ After configuring the database, run `npx prisma migrate deploy` in deployed envi
 - Configure log retention and secret redaction.
 - Consider network-level access restrictions for an internal-only deployment.
 
-## 8. Repository policy
+## 8. Geo-grid operations
+
+- Keep `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`, and `GEOGRID_SCHEDULER_SECRET` server-only.
+- Configure positive per-scan, weekly, and monthly USD limits before enabling scans.
+- Configure `NEXT_PUBLIC_MAP_TILE_URL` for a production-capable tile provider and retain visible attribution.
+- Vercel Cron calls `/api/jobs/geogrid` weekly; only the dedicated Bearer secret authorizes it.
+- Retry incomplete provider points through the stored job; never resubmit successful coordinates.
+- A live smoke test must use an explicitly confirmed 3×3 scan and verify nine terminal points, actual cost, map/table parity, and zero provider calls on refresh.
+
+## 9. Repository policy
 
 No GitHub push is part of the current work. If a repository is created later, secrets, `.env`, SQLite database files, build output, and logs must remain ignored.
 
