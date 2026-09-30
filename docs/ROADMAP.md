@@ -45,7 +45,8 @@
 ## Phase 2: GBP geo-grid prototype
 
 - Define a provider-neutral geo-grid data shape.
-- Build the map and ranked marker interface using sample data.
+- Synchronize all connected GBP locations and display official performance analytics. Complete.
+- Build the live map and ranked marker interface with DataForSEO, cost controls, weekly schedules, and historical comparisons.
 - Add keyword, center point, radius, and grid-size controls.
 - Support CSV or JSON import if useful.
 - Validate usefulness with the internal team before purchasing or integrating live rank data.

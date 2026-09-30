@@ -7,7 +7,9 @@ Phase 1 uses two official Google APIs:
 - Google Search Console API for properties, Search Analytics, sitemaps, and URL inspection.
 - Chrome UX Report API for Core Web Vitals field data.
 
-Google Analytics 4 and Google Business Profile are not phase 1 integrations.
+Google Analytics 4 is not integrated. Google Business Profile uses the Account Management, Business Information, and Business Profile Performance APIs. The Google Cloud project must be approved for Business Profile API access and the shared owner must grant `https://www.googleapis.com/auth/business.manage` in addition to Search Console read-only access.
+
+GBP locations synchronize only through an explicit authenticated request. Analytics reads use daily performance time series and monthly search-keyword impressions, normalize missing metric series as empty, and cache successful reports for six hours. Cached data may be returned with a stale indicator during an upstream outage.
 
 ## 2. Google Cloud prerequisites
 

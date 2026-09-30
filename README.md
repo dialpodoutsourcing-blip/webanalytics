@@ -17,7 +17,7 @@ This repository currently contains the approved product and technical documentat
 - Core Web Vitals from the Chrome UX Report API.
 - API response caching and manual refresh.
 
-The Google Business Profile geo-grid feature is deferred to a later phase. Its first version will use sample or imported data rather than live rank scanning.
+The Local SEO area supports synchronized Google Business Profile locations, official GBP performance metrics, monthly search-query discovery, and explicitly approved tracked keywords. Geo-grid rankings use a separate DataForSEO integration so third-party rank observations are never confused with Google's owned-profile analytics.
 
 ## Planned stack
 

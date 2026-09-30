@@ -10,6 +10,10 @@
 
 ## 2. Planned entities
 
+### BusinessLocation, TrackedKeyword, and GbpAnalyticsCache
+
+`BusinessLocation` mirrors every accessible GBP location without deleting historical rows when Google no longer returns one. `TrackedKeyword` stores normalized per-location identity plus explicit suggested, approved, or paused state. `GbpAnalyticsCache` stores disposable normalized reports by location, report type, and inclusive date range. Production uses durable PostgreSQL for these records.
+
 ### GoogleConnection
 
 Represents the single connected Google authorization.
