@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { unauthorizedResponse } from "@/lib/route-auth";
 import { listStoredBusinessLocations, syncBusinessLocations } from "@/features/gbp/locations";
+import { GbpProviderError } from "@/features/gbp/client";
 
 async function respond(load: () => Promise<unknown>, failure: { logMessage: string; userMessage: string }) {
   const denied = await unauthorizedResponse();
@@ -20,8 +21,16 @@ export async function GET() {
 }
 
 export async function POST() {
-  return await respond(syncBusinessLocations, {
-    logMessage: "GBP location synchronization failed",
-    userMessage: "Business Profile synchronization failed. Check the Google connection and try again.",
-  });
+  const denied = await unauthorizedResponse();
+  if (denied) return denied;
+  try { return NextResponse.json({ data: await syncBusinessLocations() }); }
+  catch (cause) {
+    console.error("GBP location synchronization failed", cause);
+    const providerCause = cause instanceof Error && cause.cause instanceof GbpProviderError ? cause.cause : null;
+    return NextResponse.json({
+      error: providerCause
+        ? `Google Business Profile request failed: ${providerCause.message}`
+        : "Business Profile synchronization failed. Check the Google connection and try again.",
+    }, { status: 503 });
+  }
 }

@@ -5,6 +5,7 @@ vi.mock("@/lib/route-auth", () => ({ unauthorizedResponse: mocks.unauthorized })
 vi.mock("@/features/gbp/locations", () => ({ listStoredBusinessLocations: mocks.list, syncBusinessLocations: mocks.sync }));
 
 import { GET, POST } from "@/app/api/gbp/locations/route";
+import { GbpProviderError } from "@/features/gbp/client";
 
 describe("GBP location routes", () => {
   beforeEach(() => { vi.clearAllMocks(); vi.spyOn(console, "error").mockImplementation(() => undefined); mocks.unauthorized.mockResolvedValue(null); mocks.list.mockResolvedValue([{ googleLocationId: "locations/1" }]); mocks.sync.mockResolvedValue([{ googleLocationId: "locations/2" }]); });
@@ -31,13 +32,15 @@ describe("GBP location routes", () => {
     expect(console.error).toHaveBeenCalledWith("GBP stored-location read failed", cause);
   });
   it("reports and logs Google synchronization failures", async () => {
-    const cause = new Error("Google request failed");
+    const cause = new Error("Reconnect Google to continue.", {
+      cause: new GbpProviderError(403, 403, "PERMISSION_DENIED", "My Business Account Management API is disabled."),
+    });
     mocks.sync.mockRejectedValue(cause);
 
     const response = await POST();
 
     expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ error: "Business Profile synchronization failed. Check the Google connection and try again." });
+    expect(await response.json()).toEqual({ error: "Google Business Profile request failed: My Business Account Management API is disabled." });
     expect(console.error).toHaveBeenCalledWith("GBP location synchronization failed", cause);
   });
 });
