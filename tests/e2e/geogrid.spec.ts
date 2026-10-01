@@ -30,6 +30,11 @@ test("an authenticated user explicitly starts and reads a geo-grid scan", async 
   await page.route("https://tile.openstreetmap.org/**", (route) => route.fulfill({ status: 204 }));
 
   await page.goto("/local-seo/geogrid");
+  const fields = await page.locator(".scan-fields").boundingBox();
+  const actions = await page.locator(".scan-actions").boundingBox();
+  expect(fields).not.toBeNull();
+  expect(actions).not.toBeNull();
+  expect(actions!.y).toBeGreaterThanOrEqual(fields!.y + fields!.height - 1);
   await page.getByLabel("Business Profile location").selectOption("locations/1");
   await page.getByLabel("Tracked keyword").selectOption("key");
   await expect(page.getByText("49 points")).toBeVisible();

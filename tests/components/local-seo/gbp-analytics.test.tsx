@@ -18,3 +18,13 @@ it("loads official metrics after a location is selected without starting a scan"
   expect(screen.getByText(/Official Google Business Profile data/i)).toBeInTheDocument();
   await waitFor(() => expect(fetcher.mock.calls.every(([url]) => !String(url).includes("geogrid"))).toBe(true));
 });
+
+it("groups setup controls and presents empty guidance as a status", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ data: [] }) })));
+
+  render(<GbpAnalytics/>);
+
+  const setup = await screen.findByRole("group", { name: "GBP analytics setup" });
+  expect(setup).toContainElement(screen.getByRole("button", { name: "Synchronize GBP locations" }));
+  expect(screen.getByRole("status")).toHaveTextContent("Choose a Business Profile location");
+});

@@ -24,11 +24,16 @@ export function GeoGridWorkspace() {
   async function retry() { if (!scan) return; const response = await fetch(`/api/geogrid/scans/${scan.id}`, { method: "POST" }), value = await response.json(); if (!response.ok) { setError(value.error); return; } setScan(value.data); }
   const points = scan?.points ?? [];
   return <div className="local-seo-workspace">
-    {!locations.length && <button onClick={() => void syncLocations().catch((cause) => setError(cause.message))}>Synchronize GBP locations</button>}
-    <ScanControls locations={locations} locationId={locationId} onLocation={selectLocation} keywords={keywords} keywordId={keywordId} onKeyword={selectKeyword} gridSize={gridSize} onGridSize={setGridSize} radiusKm={radiusKm} onRadius={setRadiusKm} onRun={run} running={Boolean(scan && ["QUEUED", "SUBMITTING", "RUNNING"].includes(scan.status))}/>
+    <section className="setup-panel" role="group" aria-label="Geo-grid scan setup">
+      <div className="setup-panel-head">
+        <div><span>Scan setup</span><strong>Configure a local ranking scan</strong></div>
+        {!locations.length && <button className="button-secondary" onClick={() => void syncLocations().catch((cause) => setError(cause.message))}>Synchronize GBP locations</button>}
+      </div>
+      <ScanControls locations={locations} locationId={locationId} onLocation={selectLocation} keywords={keywords} keywordId={keywordId} onKeyword={selectKeyword} gridSize={gridSize} onGridSize={setGridSize} radiusKm={radiusKm} onRadius={setRadiusKm} onRun={run} running={Boolean(scan && ["QUEUED", "SUBMITTING", "RUNNING"].includes(scan.status))}/>
+    </section>
     {history.length > 0 && <div className="local-controls"><label>Scan history<select aria-label="Scan history" value={scan?.id ?? ""} onChange={(event) => void openScan(event.target.value)}><option value="">Choose a saved scan</option>{history.map((item) => <option key={item.id} value={item.id}>{new Date(item.createdAt).toLocaleDateString()} - {item.keyword} ({item.status.toLowerCase()})</option>)}</select></label><label>Compare with<select aria-label="Compare with scan" value={compareTo} onChange={(event) => { setCompareTo(event.target.value); if(scan) void openScan(scan.id,event.target.value); }}><option value="">No comparison</option>{history.filter((item) => item.id !== scan?.id).map((item) => <option key={item.id} value={item.id}>{new Date(item.createdAt).toLocaleDateString()} - {item.keyword}</option>)}</select></label></div>}
     {error && <div className="state state-error"><strong>Geo-grid unavailable</strong><span>{error}</span></div>}
-    {!scan && <p className="notice">Select an open location and approved keyword. A paid scan runs only after you press Run new scan.</p>}
+    {!scan && <div className="empty-state" role="status"><strong>Ready when you are</strong><span>Select an open location and approved keyword. A paid scan runs only after you press Run new scan.</span></div>}
     {scan && <p className="notice">{scan.keyword} · {scan.gridSize} by {scan.gridSize} · {scan.radiusKm} km · actual cost ${(scan.actualCostUsd ?? 0).toFixed(4)}</p>}
     {scan && ["PARTIAL", "FAILED"].includes(scan.status) && <button onClick={() => void retry()}>Retry incomplete points</button>}
     {scan?.metrics && <ScanSummary metrics={scan.metrics}/>} {points.length > 0 && <><GeoGridMap points={points}/><GeoGridTable points={points}/></>}
